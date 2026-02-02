@@ -1,0 +1,3 @@
+{
+  "extends": "@better-nexbase/config/tsconfig.base.json"
+}
