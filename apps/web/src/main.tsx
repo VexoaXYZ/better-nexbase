@@ -1,6 +1,8 @@
 import { env } from "@better-nexbase/env/web";
+import { ConvexProviderWithAuthKit } from "@convex-dev/workos";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
+import { ConvexReactClient } from "convex/react";
 import ReactDOM from "react-dom/client";
 
 import { routeTree } from "./routeTree.gen";
@@ -11,15 +13,25 @@ const router = createRouter({
 	routeTree,
 	defaultPreload: "intent",
 	context: {},
-	Wrap: function WrapComponent({ children }: { children: React.ReactNode }) {
-		return <ConvexProvider client={convex}>{children}</ConvexProvider>;
-	},
 });
 
 declare module "@tanstack/react-router" {
 	interface Register {
 		router: typeof router;
 	}
+}
+
+function App() {
+	return (
+		<AuthKitProvider
+			clientId={env.VITE_WORKOS_CLIENT_ID}
+			redirectUri={env.VITE_WORKOS_REDIRECT_URI}
+		>
+			<ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
+				<RouterProvider router={router} />
+			</ConvexProviderWithAuthKit>
+		</AuthKitProvider>
+	);
 }
 
 const rootElement = document.getElementById("app");
@@ -30,5 +42,5 @@ if (!rootElement) {
 
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
-	root.render(<RouterProvider router={router} />);
+	root.render(<App />);
 }

@@ -1,21 +1,22 @@
 {
-  "name": "@better-nexbase/backend",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "scripts": {
-    "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success"
-  },
-  "dependencies": {
-    "convex": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@better-nexbase/config": "workspace:*",
-    "@types/node": "^24.3.0",
-    "typescript": "catalog:"
-  }
+	"name": "@better-nexbase/backend",
+	"version": "1.0.0",
+	"description": "",
+	"license": "ISC",
+	"author": "",
+	"scripts": {
+		"dev": "convex dev",
+		"dev:setup": "convex dev --configure --until-success"
+	},
+	"dependencies": {
+		"@convex-dev/workos-authkit": "^0.1.5",
+		"convex": "catalog:",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@better-nexbase/config": "workspace:*",
+		"@types/node": "^24.3.0",
+		"typescript": "catalog:"
+	}
 }

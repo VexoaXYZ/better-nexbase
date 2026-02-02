@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { AuthButton } from "./auth-button";
 import { Container } from "./container";
-import { Button } from "./ui/button";
 
 const navLinks = [
 	{ href: "#features", label: "Features" },
@@ -62,12 +62,9 @@ function Nav() {
 							))}
 						</div>
 
-						{/* Desktop CTA */}
+						{/* Desktop Auth */}
 						<div className="hidden items-center gap-3 md:flex">
-							<Button variant="ghost" size="sm">
-								Sign in
-							</Button>
-							<Button size="sm">Get Started</Button>
+							<AuthButton />
 						</div>
 
 						{/* Mobile Menu Button */}
@@ -135,13 +132,8 @@ function Nav() {
 							</a>
 						))}
 					</div>
-					<div className="mt-auto flex flex-col gap-3">
-						<Button variant="secondary" size="lg" className="w-full">
-							Sign in
-						</Button>
-						<Button size="lg" className="w-full">
-							Get Started
-						</Button>
+					<div className="mt-auto">
+						<AuthButton size="lg" className="w-full" />
 					</div>
 				</Container>
 			</div>
