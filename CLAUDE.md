@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full-stack TypeScript monorepo using Turborepo. Frontend is React 19 with TanStack Router and Vite. Backend is Convex (serverless BaaS with real-time queries).
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19, TailwindCSS v4, TanStack Router, Vite |
+| **Backend** | Convex (real-time database & serverless functions) |
+| **Authentication** | WorkOS |
+| **Payments** | Stripe |
+| **Emails** | Resend |
+| **Monorepo** | Turborepo, Bun |
+
 ## Commands
 
 ```bash
@@ -56,9 +67,24 @@ packages/config/       # Shared TypeScript config
 - **Path aliases**: `@/` maps to `apps/web/src/`
 - **Environment**: Validated via `@better-nexbase/env`. Web uses `VITE_CONVEX_URL`
 
-## Code Style
+## Code Style (Biome)
 
-- Biome handles linting and formatting
-- Tab indentation, double quotes
-- Pre-commit hook runs `biome check --write` via lint-staged
+**IMPORTANT: All code must be Biome-compliant. A pre-commit hook enforces this.**
+
+### Formatting Rules
+- Tab indentation (not spaces)
+- Double quotes for strings
 - Tailwind classes are auto-sorted in `clsx`, `cva`, `cn` calls
+
+### Linting Rules to Follow
+- **No unused imports** - Remove all unused imports
+- **No explicit `any`** - Use proper types or `unknown`
+- **No empty `{}` type** - Use `object`, `unknown`, or `Record<string, never>`
+- **No array index as key** - Use unique identifiers for React keys
+- **Accessibility**:
+  - SVGs need `aria-hidden="true"` if decorative
+  - Anchors need valid `href` (not `#`) and accessible content
+  - Use `<span className="sr-only">` for icon-only links
+
+### Before Committing
+Always run `bun run check` to verify Biome compliance. The pre-commit hook will reject non-compliant code.
