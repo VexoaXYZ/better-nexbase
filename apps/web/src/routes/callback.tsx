@@ -25,6 +25,17 @@ function CallbackPage() {
 		upsertComplete && isOrgEnabled ? {} : "skip",
 	);
 
+	const hasOrganizationId = (
+		value: unknown,
+	): value is { organizationId: string } => {
+		return (
+			typeof value === "object" &&
+			value !== null &&
+			"organizationId" in value &&
+			typeof (value as { organizationId?: unknown }).organizationId === "string"
+		);
+	};
+
 	// Upsert user on first load
 	useEffect(() => {
 		const doUpsert = async () => {
@@ -86,8 +97,12 @@ function CallbackPage() {
 
 			hasEnsuredInOrgMode.current = true;
 			try {
-				await ensureOrg({ forceProvision: true });
-				navigate({ to: "/app" });
+				const result = await ensureOrg({ forceProvision: true });
+				if (hasOrganizationId(result)) {
+					navigate({ to: "/app" });
+					return;
+				}
+				navigate({ to: "/onboarding/organization" });
 			} catch (err) {
 				console.error("Failed to auto-provision organization:", err);
 				navigate({ to: "/onboarding/organization" });

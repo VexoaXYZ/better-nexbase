@@ -19,6 +19,17 @@ export function RequireOrganization({ children }: RequireOrganizationProps) {
 	const hasAttemptedProvision = useRef(false);
 	const [isEnsuringOrg, setIsEnsuringOrg] = useState(false);
 
+	const hasOrganizationId = (
+		value: unknown,
+	): value is { organizationId: string } => {
+		return (
+			typeof value === "object" &&
+			value !== null &&
+			"organizationId" in value &&
+			typeof (value as { organizationId?: unknown }).organizationId === "string"
+		);
+	};
+
 	useEffect(() => {
 		if (isOrgModeLoading || !isOrgEnabled || organizations === undefined) {
 			return;
@@ -38,7 +49,10 @@ export function RequireOrganization({ children }: RequireOrganizationProps) {
 		const ensure = async () => {
 			setIsEnsuringOrg(true);
 			try {
-				await ensureOrg({ forceProvision: true });
+				const result = await ensureOrg({ forceProvision: true });
+				if (!hasOrganizationId(result) && !cancelled) {
+					navigate({ to: "/onboarding/organization" });
+				}
 			} catch (error) {
 				console.error("Failed to auto-provision organization:", error);
 				if (!cancelled) {

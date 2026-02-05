@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { requireCurrentUser, requireOrgCapability } from "./lib/authz";
 import { ORG_CAPABILITIES } from "./lib/capabilities";
@@ -278,9 +279,18 @@ export const remove = mutation({
 					.withIndex("by_user", (q) => q.eq("userId", targetMembership.userId))
 					.collect();
 
-				const replacementDefault = fallbackMemberships
+				const activeFallbackMemberships = fallbackMemberships
 					.filter((membership) => membership.status === "active")
-					.sort((a, b) => a.createdAt - b.createdAt)[0]?.organizationId;
+					.sort((a, b) => a.createdAt - b.createdAt);
+
+				let replacementDefault: Id<"organizations"> | undefined;
+				for (const membership of activeFallbackMemberships) {
+					const organization = await ctx.db.get(membership.organizationId);
+					if (organization) {
+						replacementDefault = organization._id;
+						break;
+					}
+				}
 
 				await ctx.db.patch(targetMembership.userId, {
 					defaultOrganizationId: replacementDefault,
@@ -468,7 +478,24 @@ export const acceptInvite = mutation({
 
 			await ctx.db.patch(invitation._id, { status: "accepted" });
 
-			if (!user.defaultOrganizationId) {
+			let hasValidDefault = false;
+			if (user.defaultOrganizationId) {
+				const defaultOrganizationId = user.defaultOrganizationId;
+				const defaultMembership = await ctx.db
+					.query("organizationMembers")
+					.withIndex("by_org_and_user", (q) =>
+						q
+							.eq("organizationId", defaultOrganizationId)
+							.eq("userId", user._id),
+					)
+					.unique();
+				const defaultOrganization = await ctx.db.get(defaultOrganizationId);
+				hasValidDefault =
+					defaultMembership?.status === "active" &&
+					defaultOrganization !== null;
+			}
+
+			if (!hasValidDefault) {
 				await ctx.db.patch(user._id, {
 					defaultOrganizationId: invitation.organizationId,
 					updatedAt: now,
