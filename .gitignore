@@ -43,6 +43,10 @@ lerna-debug.log*
 coverage
 .nyc_output
 
+# All dot-folders (don't commit any dot-prefixed directories)
+.*/
+!.git/
+
 # Misc
 *.tgz
 .cache

@@ -3,6 +3,57 @@
 Write your Convex functions here.
 See https://docs.convex.dev/functions for more.
 
+## Runtime Org Config Control Plane
+
+This project now supports a runtime org config overlay:
+
+- Env defaults (boot-safe):
+  - `ORG_ENABLED`
+  - `ORG_FEATURE_RBAC_STRICT`
+  - `ORG_FEATURE_BILLING_ENFORCEMENT`
+  - `ORG_FEATURE_INVITE_EMAILS`
+  - `ORG_FEATURE_HARD_LOCKING`
+  - `ORG_FEATURE_WORKOS_MIRROR_WRITES`
+- Runtime override document in `appConfigs` table (`key = "default"`).
+- Accessors live in `convex/lib/config.ts`:
+  - `getAppConfig(ctx)`
+  - `isOrgEnabled(config)`
+  - `isFeatureEnabled(config, feature)`
+
+### Precedence rules
+
+- Env defaults are always loaded first.
+- Runtime overrides from `appConfigs` are merged on top.
+- Safety lock: if env `ORG_ENABLED=false`, runtime config cannot force-enable org mode.
+
+### Best-practice guardrail modules
+
+- `convex/lib/authz.ts`: centralized user/org capability checks + `OrgContext`.
+- `convex/lib/capabilities.ts`: role -> capability map.
+- `convex/lib/errors.ts`: typed error code wrapper.
+
+When org mode is disabled, selected non-critical mutations return:
+
+```ts
+{ applied: false, reason: "org_disabled", operation: string }
+```
+
+Critical operations throw typed errors like:
+
+```txt
+[ORG_DISABLED] ...
+```
+
+### Mid-project toggle behavior
+
+- Disable -> enable:
+  - Existing users stay authenticated.
+  - Users without orgs are routed to onboarding when org checks run.
+  - Users with memberships continue normally.
+- Enable -> disable:
+  - Org-dependent non-critical paths no-op or hide in UI.
+  - Critical org ops throw typed `ORG_DISABLED` errors.
+
 A query function that takes two arguments looks like:
 
 ```ts
@@ -79,7 +130,9 @@ function handleButtonPress() {
   mutation({ first: "Hello!", second: "me" });
   // OR
   // use the result once the mutation has completed
-  mutation({ first: "Hello!", second: "me" }).then((result) => console.log(result));
+  mutation({ first: "Hello!", second: "me" }).then((result) =>
+    console.log(result),
+  );
 }
 ```
 

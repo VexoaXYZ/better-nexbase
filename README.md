@@ -42,6 +42,76 @@ bun run dev
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 Your app will connect to the Convex cloud backend automatically.
 
+## Organization Mode (On/Off)
+
+This project now supports a runtime organization mode control plane.
+
+### Source of truth and precedence
+
+1. Env defaults from Convex deployment env (`npx convex env set ...`)
+2. Runtime DB override in `appConfigs` (`api.appConfig.update`, `api.appConfig.setOrgEnabled`)
+
+Important: `ORG_ENABLED=false` in env is a hard safety lock and wins over runtime overrides.
+
+### Flags
+
+- `ORG_ENABLED`
+- `ORG_FEATURE_RBAC_STRICT`
+- `ORG_FEATURE_BILLING_ENFORCEMENT`
+- `ORG_FEATURE_INVITE_EMAILS`
+- `ORG_FEATURE_HARD_LOCKING`
+- `ORG_FEATURE_WORKOS_MIRROR_WRITES`
+
+### When org mode is disabled
+
+- Auth still works.
+- Callback routes users to `/app` (not org onboarding).
+- Org guard (`RequireOrganization`) is bypassed.
+- Sidebar hides org switcher and org/member settings links.
+- Org/members settings pages show a clear "unavailable while org mode is disabled" state.
+- Non-critical org mutations may return:
+  - `{ applied: false, reason: "org_disabled", operation: string }`
+- Critical org operations throw typed errors like:
+  - `[ORG_DISABLED] ...`
+
+### When org mode is enabled
+
+- Normal org onboarding/membership flows apply.
+- Users without organizations are routed to `/onboarding/organization`.
+- RBAC and capability checks are enforced by backend guards.
+
+### Enable org mode mid-project (what happens)
+
+If you start with org mode disabled and enable later:
+
+1. Existing users remain valid/authenticated.
+2. Users with no org will be routed to onboarding on next callback/protected org check.
+3. Users who already have org memberships continue normally.
+4. Org settings and members UI links reappear automatically.
+5. Any previously disabled org-only operations become active again.
+
+Recommended rollout:
+
+1. Enable in deployment env:
+   - `npx convex env set ORG_ENABLED true`
+2. Keep strict RBAC on:
+   - `npx convex env set ORG_FEATURE_RBAC_STRICT true`
+3. Restart backend dev process (`bun run dev:server`) if running locally.
+4. Verify by signing in with:
+   - a user with no org (should go to onboarding),
+   - a user with an org (should go to `/app`).
+
+### Common edge cases
+
+- **"I changed `.env.local` but behavior did not change"**
+  - Convex uses deployment env; run `npx convex env set ...`.
+- **Runtime toggle says enabled but app still disabled**
+  - Env hard lock is off? If `ORG_ENABLED=false` in env, runtime cannot override it.
+- **User stuck on onboarding while org disabled**
+  - Ensure frontend is rebuilt/restarted after updates and confirm `api.appConfig.get` returns `org.enabled: false`.
+- **User has memberships but no `defaultOrganizationId`**
+  - Backend resolves first active membership as fallback context.
+
 ## Git Hooks and Formatting
 
 - Initialize hooks: `bun run prepare`

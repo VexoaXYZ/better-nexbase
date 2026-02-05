@@ -2,6 +2,7 @@ import {
 	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
+	useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Footer } from "@/components/footer";
@@ -34,6 +35,15 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 		],
 	}),
 });
+
+// Routes that should NOT show the landing page Nav/Footer
+const noLandingLayoutRoutes = [
+	"/auth",
+	"/app",
+	"/onboarding",
+	"/invite",
+	"/callback",
+];
 
 function BackgroundEffects() {
 	return (
@@ -80,6 +90,11 @@ function BackgroundEffects() {
 }
 
 function RootComponent() {
+	const location = useLocation();
+	const showLandingLayout = !noLandingLayoutRoutes.some((route) =>
+		location.pathname.startsWith(route),
+	);
+
 	return (
 		<>
 			<HeadContent />
@@ -88,14 +103,18 @@ function RootComponent() {
 				forcedTheme="dark"
 				disableTransitionOnChange
 			>
-				<div className="relative flex min-h-screen flex-col">
-					<BackgroundEffects />
-					<Nav />
-					<main className="flex-1">
-						<Outlet />
-					</main>
-					<Footer />
-				</div>
+				{showLandingLayout ? (
+					<div className="relative flex min-h-screen flex-col">
+						<BackgroundEffects />
+						<Nav />
+						<main className="flex-1">
+							<Outlet />
+						</main>
+						<Footer />
+					</div>
+				) : (
+					<Outlet />
+				)}
 			</ThemeProvider>
 			<TanStackRouterDevtools position="bottom-left" />
 		</>

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useConvexAuth } from "convex/react";
 import { Button } from "./ui/button";
@@ -14,7 +15,7 @@ export function AuthButton({
 	className,
 }: AuthButtonProps) {
 	const { isLoading: convexLoading, isAuthenticated } = useConvexAuth();
-	const { user, signIn, signOut, isLoading: authLoading } = useAuth();
+	const { user, signOut, isLoading: authLoading } = useAuth();
 
 	const isLoading = convexLoading || authLoading;
 
@@ -36,6 +37,9 @@ export function AuthButton({
 						className="h-8 w-8 rounded-full border border-zinc-700"
 					/>
 				)}
+				<Button size={size} variant={variant} asChild className={className}>
+					<Link to="/app">Dashboard</Link>
+				</Button>
 				<Button
 					size={size}
 					variant="ghost"
@@ -49,14 +53,14 @@ export function AuthButton({
 	}
 
 	return (
-		<Button
-			size={size}
-			variant={variant}
-			onClick={() => signIn()}
-			className={className}
-		>
-			Sign in
-		</Button>
+		<div className="flex items-center gap-2">
+			<Button size={size} variant="ghost" asChild className={className}>
+				<Link to="/auth/sign-in">Sign in</Link>
+			</Button>
+			<Button size={size} variant={variant} asChild className={className}>
+				<Link to="/auth/sign-up">Get Started</Link>
+			</Button>
+		</div>
 	);
 }
 
