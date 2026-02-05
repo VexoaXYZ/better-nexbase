@@ -37,6 +37,7 @@ export function InviteMemberDialog({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [inviteLink, setInviteLink] = useState<string | null>(null);
+	const [emailSent, setEmailSent] = useState(false);
 
 	const invite = useMutation(api.members.invite);
 
@@ -52,9 +53,10 @@ export function InviteMemberDialog({
 				role,
 			});
 
-			// Generate invite link (in production, you'd send this via email)
+			// Keep invite link available even when email sending is enabled.
 			const link = `${window.location.origin}/invite/${result.token}`;
 			setInviteLink(link);
+			setEmailSent(Boolean((result as { emailSent?: boolean }).emailSent));
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : "Failed to send invitation",
@@ -70,6 +72,7 @@ export function InviteMemberDialog({
 		setRole("member");
 		setError(null);
 		setInviteLink(null);
+		setEmailSent(false);
 	};
 
 	const handleCopyLink = async () => {
@@ -107,8 +110,9 @@ export function InviteMemberDialog({
 						<DialogHeader>
 							<DialogTitle>Invitation sent!</DialogTitle>
 							<DialogDescription>
-								Share this link with {email} to invite them to your
-								organization.
+								{emailSent
+									? `An invitation email was sent to ${email}.`
+									: `Share this link with ${email} to invite them to your organization.`}
 							</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-4 py-4">
@@ -133,7 +137,8 @@ export function InviteMemberDialog({
 								</Button>
 							</div>
 							<p className="text-xs text-zinc-500">
-								This invite link expires in 7 days.
+								This invite link expires in 7 days. Keep it as a fallback even
+								when email delivery is enabled.
 							</p>
 						</div>
 						<DialogFooter>

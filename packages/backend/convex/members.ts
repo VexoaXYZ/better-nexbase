@@ -3,7 +3,8 @@ import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { requireCurrentUser, requireOrgCapability } from "./lib/authz";
 import { ORG_CAPABILITIES } from "./lib/capabilities";
-import { getAppConfig, isOrgEnabled } from "./lib/config";
+import { getAppConfig, isFeatureEnabled, isOrgEnabled } from "./lib/config";
+import { sendOrganizationInviteEmail } from "./lib/email";
 import { APP_ERROR_CODES, AppError, toPublicError } from "./lib/errors";
 
 /**
@@ -386,7 +387,26 @@ export const invite = mutation({
 				createdAt: now,
 			});
 
-			return { invitationId, token };
+			let emailSent = false;
+			if (isFeatureEnabled(config, "inviteEmails")) {
+				const organization = await ctx.db.get(args.organizationId);
+				if (organization) {
+					const baseUrl =
+						process.env.SITE_URL?.trim() ||
+						process.env.CONVEX_SITE_URL?.trim() ||
+						"http://localhost:3001";
+					const inviteLink = `${baseUrl.replace(/\/$/, "")}/invite/${token}`;
+					const emailResult = await sendOrganizationInviteEmail(ctx, {
+						toEmail: args.email,
+						organizationName: organization.name,
+						inviteLink,
+						inviterName: inviter.name || inviter.email,
+					});
+					emailSent = emailResult.sent;
+				}
+			}
+
+			return { invitationId, token, emailSent };
 		} catch (error) {
 			toPublicError(error);
 		}

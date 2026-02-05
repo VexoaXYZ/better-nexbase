@@ -42,6 +42,24 @@ bun run dev
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 Your app will connect to the Convex cloud backend automatically.
 
+## Stripe + Resend Setup
+
+This template includes first-class integrations for billing and transactional email via Convex components.
+
+Set these Convex env vars:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_WEBHOOK_SECRET`
+- `RESEND_FROM_EMAIL` (e.g. `Nexbase <noreply@yourdomain.com>`)
+- `RESEND_TEST_MODE` (`true` by default; set `false` in production)
+
+Configure external webhooks:
+
+- Stripe -> `https://<your-deployment>.convex.site/stripe/webhook`
+- Resend -> `https://<your-deployment>.convex.site/resend-webhook`
+
 ## Organization Mode (On/Off)
 
 This project now supports a runtime organization mode control plane.
