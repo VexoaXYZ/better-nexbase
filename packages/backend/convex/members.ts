@@ -273,8 +273,17 @@ export const remove = mutation({
 			if (
 				memberUser?.defaultOrganizationId === targetMembership.organizationId
 			) {
+				const fallbackMemberships = await ctx.db
+					.query("organizationMembers")
+					.withIndex("by_user", (q) => q.eq("userId", targetMembership.userId))
+					.collect();
+
+				const replacementDefault = fallbackMemberships
+					.filter((membership) => membership.status === "active")
+					.sort((a, b) => a.createdAt - b.createdAt)[0]?.organizationId;
+
 				await ctx.db.patch(targetMembership.userId, {
-					defaultOrganizationId: undefined,
+					defaultOrganizationId: replacementDefault,
 					updatedAt: Date.now(),
 				});
 			}

@@ -1,7 +1,7 @@
 import { api } from "@backend/convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { useEffect, useRef, useState } from "react";
 import { useOrgMode } from "@/hooks/use-org-mode";
 
 interface RequireOrganizationProps {
@@ -11,23 +11,58 @@ interface RequireOrganizationProps {
 export function RequireOrganization({ children }: RequireOrganizationProps) {
 	const navigate = useNavigate();
 	const { isLoading: isOrgModeLoading, isOrgEnabled } = useOrgMode();
+	const ensureOrg = useMutation(api.organizations.ensureForCurrentUser);
 	const organizations = useQuery(
 		api.organizations.listForUser,
 		isOrgEnabled ? {} : "skip",
 	);
+	const hasAttemptedProvision = useRef(false);
+	const [isEnsuringOrg, setIsEnsuringOrg] = useState(false);
 
 	useEffect(() => {
-		if (
-			!isOrgModeLoading &&
-			isOrgEnabled &&
-			organizations !== undefined &&
-			organizations.length === 0
-		) {
-			navigate({ to: "/onboarding/organization" });
+		if (isOrgModeLoading || !isOrgEnabled || organizations === undefined) {
+			return;
 		}
-	}, [isOrgEnabled, isOrgModeLoading, organizations, navigate]);
 
-	if (isOrgModeLoading || (isOrgEnabled && organizations === undefined)) {
+		if (organizations.length > 0) {
+			return;
+		}
+
+		if (hasAttemptedProvision.current) {
+			return;
+		}
+
+		hasAttemptedProvision.current = true;
+		let cancelled = false;
+
+		const ensure = async () => {
+			setIsEnsuringOrg(true);
+			try {
+				await ensureOrg({ forceProvision: true });
+			} catch (error) {
+				console.error("Failed to auto-provision organization:", error);
+				if (!cancelled) {
+					navigate({ to: "/onboarding/organization" });
+				}
+			} finally {
+				if (!cancelled) {
+					setIsEnsuringOrg(false);
+				}
+			}
+		};
+
+		void ensure();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [isOrgModeLoading, isOrgEnabled, organizations, ensureOrg, navigate]);
+
+	if (
+		isOrgModeLoading ||
+		isEnsuringOrg ||
+		(isOrgEnabled && organizations === undefined)
+	) {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
 				<div className="text-center">

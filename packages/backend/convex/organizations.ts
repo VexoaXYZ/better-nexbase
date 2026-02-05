@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { type MutationCtx, mutation, query } from "./_generated/server";
 import {
 	orgDisabledNoop,
 	requireCurrentUser,
@@ -9,6 +10,140 @@ import {
 import { ORG_CAPABILITIES } from "./lib/capabilities";
 import { getAppConfig, isOrgEnabled } from "./lib/config";
 import { APP_ERROR_CODES, AppError, toPublicError } from "./lib/errors";
+
+function toSlug(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "")
+		.slice(0, 40);
+}
+
+function buildWorkspaceName(user: Doc<"users">): string {
+	const trimmedName = user.name?.trim();
+	if (trimmedName) return `${trimmedName}'s Workspace`;
+
+	const emailPrefix = user.email.split("@")[0]?.trim();
+	if (emailPrefix) {
+		return `${emailPrefix.replace(/[._-]+/g, " ")} Workspace`;
+	}
+
+	return "Personal Workspace";
+}
+
+function buildWorkosOrgPlaceholder(): string {
+	return `org_local_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+}
+
+async function getActiveMembershipsForUser(
+	ctx: MutationCtx,
+	userId: Id<"users">,
+) {
+	const memberships = await ctx.db
+		.query("organizationMembers")
+		.withIndex("by_user", (q) => q.eq("userId", userId))
+		.collect();
+
+	return memberships
+		.filter((membership) => membership.status === "active")
+		.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+function resolveEffectiveDefaultOrganizationId(
+	user: Doc<"users">,
+	activeMemberships: Doc<"organizationMembers">[],
+): Id<"organizations"> | null {
+	if (activeMemberships.length === 0) {
+		return null;
+	}
+
+	if (
+		user.defaultOrganizationId &&
+		activeMemberships.some(
+			(membership) => membership.organizationId === user.defaultOrganizationId,
+		)
+	) {
+		return user.defaultOrganizationId;
+	}
+
+	return activeMemberships[0]?.organizationId ?? null;
+}
+
+async function generateUniqueOrganizationSlug(
+	ctx: MutationCtx,
+	baseSlug: string,
+): Promise<string> {
+	const normalizedBase = toSlug(baseSlug) || "workspace";
+
+	for (let attempt = 0; attempt < 25; attempt += 1) {
+		const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
+		const candidate = `${normalizedBase}${suffix}`.slice(0, 40);
+
+		const existing = await ctx.db
+			.query("organizations")
+			.withIndex("by_slug", (q) => q.eq("slug", candidate))
+			.unique();
+
+		if (!existing) {
+			return candidate;
+		}
+	}
+
+	return `workspace-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+}
+
+async function ensureOrganizationForUser(
+	ctx: MutationCtx,
+	user: Doc<"users">,
+): Promise<{ organizationId: Id<"organizations">; created: boolean }> {
+	const activeMemberships = await getActiveMembershipsForUser(ctx, user._id);
+	const effectiveDefault = resolveEffectiveDefaultOrganizationId(
+		user,
+		activeMemberships,
+	);
+
+	if (effectiveDefault) {
+		if (user.defaultOrganizationId !== effectiveDefault) {
+			await ctx.db.patch(user._id, {
+				defaultOrganizationId: effectiveDefault,
+				updatedAt: Date.now(),
+			});
+		}
+
+		return { organizationId: effectiveDefault, created: false };
+	}
+
+	const now = Date.now();
+	const workspaceName = buildWorkspaceName(user);
+	const slug = await generateUniqueOrganizationSlug(ctx, workspaceName);
+
+	const orgId = await ctx.db.insert("organizations", {
+		workosOrgId: buildWorkosOrgPlaceholder(),
+		name: workspaceName,
+		slug,
+		status: "active",
+		createdAt: now,
+		updatedAt: now,
+		createdBy: user._id,
+	});
+
+	await ctx.db.insert("organizationMembers", {
+		organizationId: orgId,
+		userId: user._id,
+		role: "owner",
+		status: "active",
+		joinedAt: now,
+		createdAt: now,
+		updatedAt: now,
+	});
+
+	await ctx.db.patch(user._id, {
+		defaultOrganizationId: orgId,
+		updatedAt: now,
+	});
+
+	return { organizationId: orgId, created: true };
+}
 
 /**
  * Create a new organization
@@ -72,6 +207,29 @@ export const create = mutation({
 			}
 
 			return orgId;
+		} catch (error) {
+			toPublicError(error);
+		}
+	},
+});
+
+/**
+ * Ensure the current user always has an organization context.
+ * Used to auto-provision personal workspaces and heal stale defaults.
+ */
+export const ensureForCurrentUser = mutation({
+	args: {
+		forceProvision: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		try {
+			const config = await getAppConfig(ctx);
+			if (!isOrgEnabled(config) && !args.forceProvision) {
+				return orgDisabledNoop("organizations.ensureForCurrentUser");
+			}
+
+			const user = await requireCurrentUser(ctx);
+			return await ensureOrganizationForUser(ctx, user);
 		} catch (error) {
 			toPublicError(error);
 		}
@@ -240,19 +398,26 @@ export const listForUser = query({
 				.withIndex("by_user", (q) => q.eq("userId", user._id))
 				.collect();
 
+			const activeMemberships = memberships
+				.filter((membership) => membership.status === "active")
+				.sort((a, b) => a.createdAt - b.createdAt);
+
+			const effectiveDefault = resolveEffectiveDefaultOrganizationId(
+				user,
+				activeMemberships,
+			);
+
 			const organizations = await Promise.all(
-				memberships
-					.filter((membership) => membership.status === "active")
-					.map(async (membership) => {
-						const organization = await ctx.db.get(membership.organizationId);
-						return organization
-							? {
-									...organization,
-									membership,
-									isDefault: user.defaultOrganizationId === organization._id,
-								}
-							: null;
-					}),
+				activeMemberships.map(async (membership) => {
+					const organization = await ctx.db.get(membership.organizationId);
+					return organization
+						? {
+								...organization,
+								membership,
+								isDefault: effectiveDefault === organization._id,
+							}
+						: null;
+				}),
 			);
 
 			return organizations.filter((organization) => organization !== null);

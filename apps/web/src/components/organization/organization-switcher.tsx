@@ -25,7 +25,8 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 	const setDefaultOrg = useMutation(api.organizations.setDefaultOrganization);
 	const [isOpen, setIsOpen] = useState(false);
 
-	const currentOrg = organizations?.find((org) => org?.isDefault);
+	const currentOrg =
+		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
 	const handleSwitchOrg = async (orgId: Id<"organizations">) => {
 		await setDefaultOrg({ organizationId: orgId });

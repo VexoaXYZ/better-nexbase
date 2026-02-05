@@ -80,7 +80,20 @@ async function resolveDefaultOrganizationId(
 	user: Doc<"users">,
 ): Promise<Id<"organizations"> | null> {
 	if (user.defaultOrganizationId) {
-		return user.defaultOrganizationId;
+		const defaultOrganizationId = user.defaultOrganizationId;
+		const defaultMembership = await ctx.db
+			.query("organizationMembers")
+			.withIndex("by_org_and_user", (q) =>
+				q.eq("organizationId", defaultOrganizationId).eq("userId", user._id),
+			)
+			.unique();
+
+		if (defaultMembership?.status === "active") {
+			const organization = await ctx.db.get(defaultOrganizationId);
+			if (organization) {
+				return defaultOrganizationId;
+			}
+		}
 	}
 
 	const memberships = await ctx.db
@@ -88,11 +101,18 @@ async function resolveDefaultOrganizationId(
 		.withIndex("by_user", (q) => q.eq("userId", user._id))
 		.collect();
 
-	const activeMembership = memberships.find((membership) => {
-		return membership.status === "active";
-	});
+	const activeMemberships = memberships
+		.filter((membership) => membership.status === "active")
+		.sort((a, b) => a.createdAt - b.createdAt);
 
-	return activeMembership?.organizationId ?? null;
+	for (const membership of activeMemberships) {
+		const organization = await ctx.db.get(membership.organizationId);
+		if (organization) {
+			return membership.organizationId;
+		}
+	}
+
+	return null;
 }
 
 export async function requireCurrentUser(ctx: AuthzCtx): Promise<Doc<"users">> {

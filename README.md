@@ -66,6 +66,7 @@ Important: `ORG_ENABLED=false` in env is a hard safety lock and wins over runtim
 
 - Auth still works.
 - Callback routes users to `/app` (not org onboarding).
+- Callback pre-provisions a personal workspace in the background so future org enablement is seamless.
 - Org guard (`RequireOrganization`) is bypassed.
 - Sidebar hides org switcher and org/member settings links.
 - Org/members settings pages show a clear "unavailable while org mode is disabled" state.
@@ -77,7 +78,7 @@ Important: `ORG_ENABLED=false` in env is a hard safety lock and wins over runtim
 ### When org mode is enabled
 
 - Normal org onboarding/membership flows apply.
-- Users without organizations are routed to `/onboarding/organization`.
+- Users without organizations are auto-provisioned a personal workspace, then continue to `/app`.
 - RBAC and capability checks are enforced by backend guards.
 
 ### Enable org mode mid-project (what happens)
@@ -110,7 +111,7 @@ Recommended rollout:
 - **User stuck on onboarding while org disabled**
   - Ensure frontend is rebuilt/restarted after updates and confirm `api.appConfig.get` returns `org.enabled: false`.
 - **User has memberships but no `defaultOrganizationId`**
-  - Backend resolves first active membership as fallback context.
+  - Backend resolves first active membership as fallback context and auto-heals default selection during provisioning.
 
 ## Git Hooks and Formatting
 

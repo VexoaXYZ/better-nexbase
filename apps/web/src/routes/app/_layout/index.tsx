@@ -11,7 +11,8 @@ export const Route = createFileRoute("/app/_layout/")({
 function DashboardPage() {
 	const { user } = useAuth();
 	const organizations = useQuery(api.organizations.listForUser);
-	const currentOrg = organizations?.find((org) => org?.isDefault);
+	const currentOrg =
+		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
 	return (
 		<div className="space-y-6">

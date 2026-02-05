@@ -28,7 +28,8 @@ function OrganizationSettingsPage() {
 		api.organizations.listForUser,
 		isOrgEnabled ? {} : "skip",
 	);
-	const currentOrg = organizations?.find((org) => org?.isDefault);
+	const currentOrg =
+		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
 	const updateOrg = useMutation(api.organizations.update);
 	const slugAvailable = useQuery(

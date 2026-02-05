@@ -24,7 +24,8 @@ function MembersSettingsPage() {
 		api.organizations.listForUser,
 		isOrgEnabled ? {} : "skip",
 	);
-	const currentOrg = organizations?.find((org) => org?.isDefault);
+	const currentOrg =
+		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
 	const invitations = useQuery(
 		api.members.listInvitations,

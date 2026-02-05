@@ -13,10 +13,13 @@ function CallbackPage() {
 	const { isLoading, user } = useAuth();
 	const navigate = useNavigate();
 	const hasUpserted = useRef(false);
+	const hasPreProvisionedOrg = useRef(false);
+	const hasEnsuredInOrgMode = useRef(false);
 	const [upsertComplete, setUpsertComplete] = useState(false);
 	const { isLoading: isOrgModeLoading, isOrgEnabled } = useOrgMode();
 
 	const upsertUser = useMutation(api.users.upsertUser);
+	const ensureOrg = useMutation(api.organizations.ensureForCurrentUser);
 	const organizations = useQuery(
 		api.organizations.listForUser,
 		upsertComplete && isOrgEnabled ? {} : "skip",
@@ -53,20 +56,45 @@ function CallbackPage() {
 			return;
 		}
 
-		if (!isOrgEnabled) {
-			navigate({ to: "/app" });
-			return;
-		}
-
-		if (organizations !== undefined) {
-			if (organizations.length === 0) {
-				// New user without organization - send to onboarding
-				navigate({ to: "/onboarding/organization" });
-			} else {
-				// User has organization - send to app
+		const resolveNextRoute = async () => {
+			if (!isOrgEnabled) {
+				// Pre-provision a personal workspace while org mode is off so toggling on is seamless.
+				if (!hasPreProvisionedOrg.current) {
+					hasPreProvisionedOrg.current = true;
+					try {
+						await ensureOrg({ forceProvision: true });
+					} catch (err) {
+						console.error("Failed to auto-provision organization:", err);
+					}
+				}
 				navigate({ to: "/app" });
+				return;
 			}
-		}
+
+			if (organizations === undefined) {
+				return;
+			}
+
+			if (organizations.length > 0) {
+				navigate({ to: "/app" });
+				return;
+			}
+
+			if (hasEnsuredInOrgMode.current) {
+				return;
+			}
+
+			hasEnsuredInOrgMode.current = true;
+			try {
+				await ensureOrg({ forceProvision: true });
+				navigate({ to: "/app" });
+			} catch (err) {
+				console.error("Failed to auto-provision organization:", err);
+				navigate({ to: "/onboarding/organization" });
+			}
+		};
+
+		void resolveNextRoute();
 	}, [
 		isLoading,
 		isOrgModeLoading,
@@ -74,6 +102,7 @@ function CallbackPage() {
 		user,
 		upsertComplete,
 		organizations,
+		ensureOrg,
 		navigate,
 	]);
 
