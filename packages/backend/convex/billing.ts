@@ -1,26 +1,16 @@
-import { type StripeComponent, StripeSubscriptions } from "@convex-dev/stripe";
 import { v } from "convex/values";
-import { api, components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { type ActionCtx, action, query } from "./_generated/server";
-import { requireOrgCapability } from "./lib/authz";
-import { ORG_CAPABILITIES } from "./lib/capabilities";
+import { type ActionCtx, action } from "./_generated/server";
+import { autumn } from "./autumn";
 
-const stripeComponent = components.stripe as unknown as StripeComponent;
-const stripeClient = new StripeSubscriptions(stripeComponent, {});
-
-function getAppBaseUrl(): string {
-	return (
-		process.env.SITE_URL?.trim() ||
-		process.env.CONVEX_SITE_URL?.trim() ||
-		"http://localhost:3001"
-	).replace(/\/$/, "");
-}
-
+/**
+ * Assert the caller is an active org owner (billing manager).
+ */
 async function assertBillingManager(
 	ctx: ActionCtx,
 	organizationId: Id<"organizations">,
 ) {
+	const { api } = await import("./_generated/api");
 	const org = await ctx.runQuery(api.organizations.get, {
 		organizationId,
 	});
@@ -36,139 +26,52 @@ async function assertBillingManager(
 	return org;
 }
 
-async function getOrCreateOrgCustomerId(
-	ctx: ActionCtx,
-	orgId: string,
-	orgName: string,
-): Promise<string> {
-	const existingSubscription = await ctx.runQuery(
-		stripeComponent.public.getSubscriptionByOrgId,
-		{ orgId },
-	);
-	if (existingSubscription?.stripeCustomerId) {
-		return existingSubscription.stripeCustomerId;
-	}
-
-	const payments = await ctx.runQuery(
-		stripeComponent.public.listPaymentsByOrgId,
-		{
-			orgId,
-		},
-	);
-	const paymentCustomerId = (payments || []).find(
-		(payment) => typeof payment?.stripeCustomerId === "string",
-	)?.stripeCustomerId;
-	if (paymentCustomerId) {
-		return paymentCustomerId;
-	}
-
-	const createdCustomer = await stripeClient.createCustomer(ctx, {
-		name: orgName,
-		metadata: { orgId },
-		idempotencyKey: `org_${orgId}`,
-	});
-	return createdCustomer.customerId;
-}
-
 /**
- * Create a Stripe Checkout session for an organization's subscription.
+ * Check if an organization has access to a feature/product via Autumn.
  */
-export const createSubscriptionCheckout = action({
+export const checkFeature = action({
 	args: {
 		organizationId: v.id("organizations"),
-		priceId: v.string(),
-		quantity: v.optional(v.number()),
-		successUrl: v.optional(v.string()),
-		cancelUrl: v.optional(v.string()),
+		featureId: v.optional(v.string()),
+		productId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const organization = await assertBillingManager(ctx, args.organizationId);
-		const orgId = String(args.organizationId);
-		const customerId = await getOrCreateOrgCustomerId(
-			ctx,
-			orgId,
-			organization.name,
-		);
+		await assertBillingManager(ctx, args.organizationId);
 
-		const baseUrl = getAppBaseUrl();
-		const successUrl =
-			args.successUrl ||
-			`${baseUrl}/app/settings/organization?billing=success&org=${orgId}`;
-		const cancelUrl =
-			args.cancelUrl ||
-			`${baseUrl}/app/settings/organization?billing=cancelled&org=${orgId}`;
-
-		return await stripeClient.createCheckoutSession(ctx, {
-			priceId: args.priceId,
-			customerId,
-			mode: "subscription",
-			quantity: args.quantity ?? 1,
-			successUrl,
-			cancelUrl,
-			subscriptionMetadata: { orgId },
+		const { data, error } = await autumn.check(ctx, {
+			featureId: args.featureId,
+			productId: args.productId,
 		});
+
+		if (error) {
+			throw new Error(`Billing check failed: ${error.message}`);
+		}
+
+		return data;
 	},
 });
 
 /**
- * Create a Stripe Customer Portal session for the organization.
+ * Track usage of a metered feature for an organization via Autumn.
  */
-export const createCustomerPortalSession = action({
+export const trackUsage = action({
 	args: {
 		organizationId: v.id("organizations"),
-		returnUrl: v.optional(v.string()),
+		featureId: v.string(),
+		value: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const organization = await assertBillingManager(ctx, args.organizationId);
-		const orgId = String(args.organizationId);
-		const customerId = await getOrCreateOrgCustomerId(
-			ctx,
-			orgId,
-			organization.name,
-		);
-		const returnUrl =
-			args.returnUrl ||
-			`${getAppBaseUrl()}/app/settings/organization?billing=portal_return`;
+		await assertBillingManager(ctx, args.organizationId);
 
-		return await stripeClient.createCustomerPortalSession(ctx, {
-			customerId,
-			returnUrl,
-		});
-	},
-});
-
-/**
- * Read org billing state synced by Stripe webhooks.
- */
-export const getOrganizationBilling = query({
-	args: { organizationId: v.id("organizations") },
-	handler: async (ctx, args) => {
-		await requireOrgCapability(ctx, ORG_CAPABILITIES.ORG_READ, {
-			organizationId: args.organizationId,
+		const { data, error } = await autumn.track(ctx, {
+			featureId: args.featureId,
+			value: args.value,
 		});
 
-		const orgId = String(args.organizationId);
-		const subscription = await ctx.runQuery(
-			stripeComponent.public.getSubscriptionByOrgId,
-			{ orgId },
-		);
-		const invoices = await ctx.runQuery(
-			stripeComponent.public.listInvoicesByOrgId,
-			{
-				orgId,
-			},
-		);
-		const payments = await ctx.runQuery(
-			stripeComponent.public.listPaymentsByOrgId,
-			{
-				orgId,
-			},
-		);
+		if (error) {
+			throw new Error(`Usage tracking failed: ${error.message}`);
+		}
 
-		return {
-			subscription,
-			invoices,
-			payments,
-		};
+		return data;
 	},
 });

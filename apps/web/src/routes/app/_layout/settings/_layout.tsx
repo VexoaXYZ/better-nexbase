@@ -15,6 +15,7 @@ export const Route = createFileRoute("/app/_layout/settings/_layout")({
 const settingsTabs = [
 	{ name: "Profile", href: "/app/settings/profile" },
 	{ name: "Organization", href: "/app/settings/organization" },
+	{ name: "Billing", href: "/app/settings/billing" },
 	{ name: "Members", href: "/app/settings/members" },
 ];
 
@@ -27,6 +28,7 @@ function SettingsLayoutRoute() {
 		: settingsTabs.filter(
 				(tab) =>
 					tab.href !== "/app/settings/organization" &&
+					tab.href !== "/app/settings/billing" &&
 					tab.href !== "/app/settings/members",
 			);
 

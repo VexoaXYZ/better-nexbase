@@ -28,6 +28,7 @@
 		"@tanstack/react-router": "^1.141.1",
 		"@workos-inc/authkit-react": "^0.16.0",
 		"class-variance-authority": "^0.7.1",
+		"autumn-js": "^0.1.75",
 		"clsx": "^2.1.1",
 		"convex": "catalog:",
 		"dotenv": "catalog:",

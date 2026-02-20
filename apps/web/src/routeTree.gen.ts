@@ -18,10 +18,12 @@ import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as AppLayoutRouteImport } from './routes/app/_layout'
 import { Route as AppLayoutIndexRouteImport } from './routes/app/_layout/index'
+import { Route as AppLayoutDemoPaidRouteImport } from './routes/app/_layout/demo-paid'
 import { Route as AppLayoutSettingsLayoutRouteImport } from './routes/app/_layout/settings/_layout'
 import { Route as AppLayoutSettingsLayoutProfileRouteImport } from './routes/app/_layout/settings/_layout/profile'
 import { Route as AppLayoutSettingsLayoutOrganizationRouteImport } from './routes/app/_layout/settings/_layout/organization'
 import { Route as AppLayoutSettingsLayoutMembersRouteImport } from './routes/app/_layout/settings/_layout/members'
+import { Route as AppLayoutSettingsLayoutBillingRouteImport } from './routes/app/_layout/settings/_layout/billing'
 
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
@@ -68,6 +70,11 @@ const AppLayoutIndexRoute = AppLayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppLayoutRoute,
 } as any)
+const AppLayoutDemoPaidRoute = AppLayoutDemoPaidRouteImport.update({
+  id: '/demo-paid',
+  path: '/demo-paid',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
 const AppLayoutSettingsLayoutRoute = AppLayoutSettingsLayoutRouteImport.update({
   id: '/settings/_layout',
   path: '/settings',
@@ -91,6 +98,12 @@ const AppLayoutSettingsLayoutMembersRoute =
     path: '/members',
     getParentRoute: () => AppLayoutSettingsLayoutRoute,
   } as any)
+const AppLayoutSettingsLayoutBillingRoute =
+  AppLayoutSettingsLayoutBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => AppLayoutSettingsLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,8 +114,10 @@ export interface FileRoutesByFullPath {
   '/auth/sso': typeof AuthSsoRoute
   '/invite/$token': typeof InviteTokenRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
+  '/app/demo-paid': typeof AppLayoutDemoPaidRoute
   '/app/': typeof AppLayoutIndexRoute
   '/app/settings': typeof AppLayoutSettingsLayoutRouteWithChildren
+  '/app/settings/billing': typeof AppLayoutSettingsLayoutBillingRoute
   '/app/settings/members': typeof AppLayoutSettingsLayoutMembersRoute
   '/app/settings/organization': typeof AppLayoutSettingsLayoutOrganizationRoute
   '/app/settings/profile': typeof AppLayoutSettingsLayoutProfileRoute
@@ -115,8 +130,10 @@ export interface FileRoutesByTo {
   '/auth/sso': typeof AuthSsoRoute
   '/invite/$token': typeof InviteTokenRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
+  '/app/demo-paid': typeof AppLayoutDemoPaidRoute
   '/app': typeof AppLayoutIndexRoute
   '/app/settings': typeof AppLayoutSettingsLayoutRouteWithChildren
+  '/app/settings/billing': typeof AppLayoutSettingsLayoutBillingRoute
   '/app/settings/members': typeof AppLayoutSettingsLayoutMembersRoute
   '/app/settings/organization': typeof AppLayoutSettingsLayoutOrganizationRoute
   '/app/settings/profile': typeof AppLayoutSettingsLayoutProfileRoute
@@ -131,8 +148,10 @@ export interface FileRoutesById {
   '/auth/sso': typeof AuthSsoRoute
   '/invite/$token': typeof InviteTokenRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
+  '/app/_layout/demo-paid': typeof AppLayoutDemoPaidRoute
   '/app/_layout/': typeof AppLayoutIndexRoute
   '/app/_layout/settings/_layout': typeof AppLayoutSettingsLayoutRouteWithChildren
+  '/app/_layout/settings/_layout/billing': typeof AppLayoutSettingsLayoutBillingRoute
   '/app/_layout/settings/_layout/members': typeof AppLayoutSettingsLayoutMembersRoute
   '/app/_layout/settings/_layout/organization': typeof AppLayoutSettingsLayoutOrganizationRoute
   '/app/_layout/settings/_layout/profile': typeof AppLayoutSettingsLayoutProfileRoute
@@ -148,8 +167,10 @@ export interface FileRouteTypes {
     | '/auth/sso'
     | '/invite/$token'
     | '/onboarding/organization'
+    | '/app/demo-paid'
     | '/app/'
     | '/app/settings'
+    | '/app/settings/billing'
     | '/app/settings/members'
     | '/app/settings/organization'
     | '/app/settings/profile'
@@ -162,8 +183,10 @@ export interface FileRouteTypes {
     | '/auth/sso'
     | '/invite/$token'
     | '/onboarding/organization'
+    | '/app/demo-paid'
     | '/app'
     | '/app/settings'
+    | '/app/settings/billing'
     | '/app/settings/members'
     | '/app/settings/organization'
     | '/app/settings/profile'
@@ -177,8 +200,10 @@ export interface FileRouteTypes {
     | '/auth/sso'
     | '/invite/$token'
     | '/onboarding/organization'
+    | '/app/_layout/demo-paid'
     | '/app/_layout/'
     | '/app/_layout/settings/_layout'
+    | '/app/_layout/settings/_layout/billing'
     | '/app/_layout/settings/_layout/members'
     | '/app/_layout/settings/_layout/organization'
     | '/app/_layout/settings/_layout/profile'
@@ -260,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLayoutIndexRouteImport
       parentRoute: typeof AppLayoutRoute
     }
+    '/app/_layout/demo-paid': {
+      id: '/app/_layout/demo-paid'
+      path: '/demo-paid'
+      fullPath: '/app/demo-paid'
+      preLoaderRoute: typeof AppLayoutDemoPaidRouteImport
+      parentRoute: typeof AppLayoutRoute
+    }
     '/app/_layout/settings/_layout': {
       id: '/app/_layout/settings/_layout'
       path: '/settings'
@@ -288,10 +320,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLayoutSettingsLayoutMembersRouteImport
       parentRoute: typeof AppLayoutSettingsLayoutRoute
     }
+    '/app/_layout/settings/_layout/billing': {
+      id: '/app/_layout/settings/_layout/billing'
+      path: '/billing'
+      fullPath: '/app/settings/billing'
+      preLoaderRoute: typeof AppLayoutSettingsLayoutBillingRouteImport
+      parentRoute: typeof AppLayoutSettingsLayoutRoute
+    }
   }
 }
 
 interface AppLayoutSettingsLayoutRouteChildren {
+  AppLayoutSettingsLayoutBillingRoute: typeof AppLayoutSettingsLayoutBillingRoute
   AppLayoutSettingsLayoutMembersRoute: typeof AppLayoutSettingsLayoutMembersRoute
   AppLayoutSettingsLayoutOrganizationRoute: typeof AppLayoutSettingsLayoutOrganizationRoute
   AppLayoutSettingsLayoutProfileRoute: typeof AppLayoutSettingsLayoutProfileRoute
@@ -299,6 +339,7 @@ interface AppLayoutSettingsLayoutRouteChildren {
 
 const AppLayoutSettingsLayoutRouteChildren: AppLayoutSettingsLayoutRouteChildren =
   {
+    AppLayoutSettingsLayoutBillingRoute: AppLayoutSettingsLayoutBillingRoute,
     AppLayoutSettingsLayoutMembersRoute: AppLayoutSettingsLayoutMembersRoute,
     AppLayoutSettingsLayoutOrganizationRoute:
       AppLayoutSettingsLayoutOrganizationRoute,
@@ -311,11 +352,13 @@ const AppLayoutSettingsLayoutRouteWithChildren =
   )
 
 interface AppLayoutRouteChildren {
+  AppLayoutDemoPaidRoute: typeof AppLayoutDemoPaidRoute
   AppLayoutIndexRoute: typeof AppLayoutIndexRoute
   AppLayoutSettingsLayoutRoute: typeof AppLayoutSettingsLayoutRouteWithChildren
 }
 
 const AppLayoutRouteChildren: AppLayoutRouteChildren = {
+  AppLayoutDemoPaidRoute: AppLayoutDemoPaidRoute,
   AppLayoutIndexRoute: AppLayoutIndexRoute,
   AppLayoutSettingsLayoutRoute: AppLayoutSettingsLayoutRouteWithChildren,
 }
