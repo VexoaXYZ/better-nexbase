@@ -1,7 +1,7 @@
 import { api } from "@backend/convex/_generated/api";
 import type { Id } from "@backend/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
-import { useState } from "react";
+import { useReducer } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -27,24 +27,78 @@ interface InviteMemberDialogProps {
 	trigger?: React.ReactNode;
 }
 
+interface InviteState {
+	isOpen: boolean;
+	email: string;
+	role: "admin" | "member";
+	isSubmitting: boolean;
+	error: string | null;
+	inviteLink: string | null;
+	emailSent: boolean;
+}
+
+type InviteAction =
+	| { type: "OPEN" }
+	| { type: "CLOSE" }
+	| { type: "SET_OPEN"; value: boolean }
+	| { type: "SET_EMAIL"; value: string }
+	| { type: "SET_ROLE"; value: "admin" | "member" }
+	| { type: "SUBMIT_START" }
+	| { type: "SUBMIT_SUCCESS"; inviteLink: string; emailSent: boolean }
+	| { type: "SUBMIT_ERROR"; error: string }
+	| { type: "RESET_FORM" };
+
+const initialState: InviteState = {
+	isOpen: false,
+	email: "",
+	role: "member",
+	isSubmitting: false,
+	error: null,
+	inviteLink: null,
+	emailSent: false,
+};
+
+function inviteReducer(state: InviteState, action: InviteAction): InviteState {
+	switch (action.type) {
+		case "OPEN":
+			return { ...state, isOpen: true };
+		case "CLOSE":
+			return { ...initialState };
+		case "SET_OPEN":
+			return action.value ? { ...state, isOpen: true } : { ...initialState };
+		case "SET_EMAIL":
+			return { ...state, email: action.value };
+		case "SET_ROLE":
+			return { ...state, role: action.value };
+		case "SUBMIT_START":
+			return { ...state, isSubmitting: true, error: null };
+		case "SUBMIT_SUCCESS":
+			return {
+				...state,
+				isSubmitting: false,
+				inviteLink: action.inviteLink,
+				emailSent: action.emailSent,
+			};
+		case "SUBMIT_ERROR":
+			return { ...state, isSubmitting: false, error: action.error };
+		case "RESET_FORM":
+			return { ...state, inviteLink: null, email: "" };
+	}
+}
+
 export function InviteMemberDialog({
 	organizationId,
 	trigger,
 }: InviteMemberDialogProps) {
-	const [isOpen, setIsOpen] = useState(false);
-	const [email, setEmail] = useState("");
-	const [role, setRole] = useState<"admin" | "member">("member");
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [inviteLink, setInviteLink] = useState<string | null>(null);
-	const [emailSent, setEmailSent] = useState(false);
+	const [state, dispatch] = useReducer(inviteReducer, initialState);
+	const { isOpen, email, role, isSubmitting, error, inviteLink, emailSent } =
+		state;
 
 	const invite = useMutation(api.members.invite);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError(null);
-		setIsSubmitting(true);
+		dispatch({ type: "SUBMIT_START" });
 
 		try {
 			const result = await invite({
@@ -53,26 +107,22 @@ export function InviteMemberDialog({
 				role,
 			});
 
-			// Keep invite link available even when email sending is enabled.
 			const link = `${window.location.origin}/invite/${result.token}`;
-			setInviteLink(link);
-			setEmailSent(Boolean((result as { emailSent?: boolean }).emailSent));
+			dispatch({
+				type: "SUBMIT_SUCCESS",
+				inviteLink: link,
+				emailSent: Boolean((result as { emailSent?: boolean }).emailSent),
+			});
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to send invitation",
-			);
-		} finally {
-			setIsSubmitting(false);
+			dispatch({
+				type: "SUBMIT_ERROR",
+				error: err instanceof Error ? err.message : "Failed to send invitation",
+			});
 		}
 	};
 
 	const handleClose = () => {
-		setIsOpen(false);
-		setEmail("");
-		setRole("member");
-		setError(null);
-		setInviteLink(null);
-		setEmailSent(false);
+		dispatch({ type: "CLOSE" });
 	};
 
 	const handleCopyLink = async () => {
@@ -82,7 +132,10 @@ export function InviteMemberDialog({
 	};
 
 	return (
-		<Dialog open={isOpen} onOpenChange={setIsOpen}>
+		<Dialog
+			open={isOpen}
+			onOpenChange={(value) => dispatch({ type: "SET_OPEN", value })}
+		>
 			<DialogTrigger asChild>
 				{trigger || (
 					<Button>
@@ -145,12 +198,7 @@ export function InviteMemberDialog({
 							<Button variant="secondary" onClick={handleClose}>
 								Done
 							</Button>
-							<Button
-								onClick={() => {
-									setInviteLink(null);
-									setEmail("");
-								}}
-							>
+							<Button onClick={() => dispatch({ type: "RESET_FORM" })}>
 								Invite Another
 							</Button>
 						</DialogFooter>
@@ -172,7 +220,9 @@ export function InviteMemberDialog({
 									type="email"
 									placeholder="colleague@company.com"
 									value={email}
-									onChange={(e) => setEmail(e.target.value)}
+									onChange={(e) =>
+										dispatch({ type: "SET_EMAIL", value: e.target.value })
+									}
 									required
 								/>
 							</div>
@@ -181,7 +231,10 @@ export function InviteMemberDialog({
 								<Select
 									value={role}
 									onValueChange={(value) =>
-										setRole(value as "admin" | "member")
+										dispatch({
+											type: "SET_ROLE",
+											value: value as "admin" | "member",
+										})
 									}
 								>
 									<SelectTrigger id="role">

@@ -1,7 +1,7 @@
 import { api } from "@backend/convex/_generated/api";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,13 +44,13 @@ function OrganizationSettingsPage() {
 		text: string;
 	} | null>(null);
 
-	// Initialize form values when org loads
-	useEffect(() => {
-		if (currentOrg) {
-			setName(currentOrg.name);
-			setSlug(currentOrg.slug);
-		}
-	}, [currentOrg]);
+	// Sync form values when org data loads (replaces useEffect)
+	const lastSyncedOrgId = useRef<string | null>(null);
+	if (currentOrg && lastSyncedOrgId.current !== currentOrg._id) {
+		lastSyncedOrgId.current = currentOrg._id;
+		setName(currentOrg.name);
+		setSlug(currentOrg.slug);
+	}
 
 	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();

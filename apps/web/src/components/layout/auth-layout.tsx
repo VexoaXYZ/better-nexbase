@@ -9,14 +9,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 		<div className="relative flex min-h-screen items-center justify-center p-4">
 			{/* Background effects */}
 			<div className="pointer-events-none fixed inset-0 overflow-hidden">
-				<div
-					className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-white/[0.02]"
-					style={{ filter: "blur(100px)" }}
-				/>
-				<div
-					className="absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-white/[0.02]"
-					style={{ filter: "blur(80px)" }}
-				/>
+				<div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-white/[0.02] blur-3xl" />
+				<div className="absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-white/[0.02] blur-3xl" />
 			</div>
 
 			{/* Content */}
