@@ -276,29 +276,11 @@ export const create = mutation({
 				updatedAt: now,
 			});
 
-			const activeMemberships = await getActiveMembershipsForUser(
-				ctx,
-				user._id,
-			);
-			const activeOrgIds: Id<"organizations">[] = [];
-			for (const membership of activeMemberships) {
-				const organization = await ctx.db.get(membership.organizationId);
-				if (organization) {
-					activeOrgIds.push(organization._id);
-				}
-			}
-			const effectiveDefault = resolveEffectiveDefaultOrganizationId(
-				user,
-				activeOrgIds,
-			);
-
-			const nextDefault = effectiveDefault ?? orgId;
-			if (user.defaultOrganizationId !== nextDefault) {
-				await ctx.db.patch(user._id, {
-					defaultOrganizationId: nextDefault,
-					updatedAt: now,
-				});
-			}
+			// Switch the user to the newly created org
+			await ctx.db.patch(user._id, {
+				defaultOrganizationId: orgId,
+				updatedAt: now,
+			});
 
 			return orgId;
 		} catch (error) {

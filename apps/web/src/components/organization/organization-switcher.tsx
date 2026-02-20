@@ -73,7 +73,7 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 
 	const handleCreateOrg = () => {
 		setIsOpen(false);
-		navigate({ to: "/onboarding/organization" });
+		navigate({ to: "/onboarding/organization", search: { new: true } });
 	};
 
 	const handleInviteClick = (token: string) => {
@@ -146,7 +146,7 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 							org && (
 								<DropdownMenuItem
 									key={org._id}
-									className="flex items-center gap-2.5 rounded-md px-2 py-1.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+									className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
 									onClick={() => handleSwitchOrg(org._id)}
 								>
 									<OrgAvatar name={org.name} logoUrl={org.logoUrl} size="md" />
@@ -185,7 +185,7 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 							{pendingInvitations.map((invitation) => (
 								<DropdownMenuItem
 									key={invitation.token}
-									className="flex items-center gap-2.5 rounded-md px-2 py-1.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+									className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
 									onClick={() => handleInviteClick(invitation.token)}
 								>
 									<OrgAvatar
@@ -212,7 +212,7 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 				<DropdownMenuSeparator />
 				<div className="px-1 py-1">
 					<DropdownMenuItem
-						className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-zinc-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+						className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-zinc-500"
 						onClick={handleCreateOrg}
 					>
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-700/80 border-dashed">

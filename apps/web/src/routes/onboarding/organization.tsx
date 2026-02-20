@@ -11,14 +11,23 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useOrgMode } from "@/hooks/use-org-mode";
 
+interface OrgOnboardingSearch {
+	new?: boolean;
+}
+
 export const Route = createFileRoute("/onboarding/organization")({
 	component: OrganizationOnboardingPage,
+	validateSearch: (search: Record<string, unknown>): OrgOnboardingSearch => ({
+		new: search.new === true || search.new === "true" ? true : undefined,
+	}),
 });
 
 function OrganizationOnboardingPage() {
 	const { isLoading: authLoading, user, signOut } = useAuth();
 	const navigate = useNavigate();
 	const { isLoading: isOrgModeLoading, isOrgEnabled } = useOrgMode();
+
+	const { new: isNewOrg } = Route.useSearch();
 
 	const [orgName, setOrgName] = useState("");
 	const [slug, setSlug] = useState("");
@@ -52,12 +61,12 @@ function OrganizationOnboardingPage() {
 		}
 	}, [authLoading, user, navigate]);
 
-	// If user already has orgs, redirect to app
+	// If user already has orgs and didn't explicitly request new org, redirect to app
 	useEffect(() => {
-		if (isOrgEnabled && userOrgs && userOrgs.length > 0) {
+		if (isOrgEnabled && !isNewOrg && userOrgs && userOrgs.length > 0) {
 			navigate({ to: "/app" });
 		}
-	}, [isOrgEnabled, userOrgs, navigate]);
+	}, [isOrgEnabled, isNewOrg, userOrgs, navigate]);
 
 	useEffect(() => {
 		if (!isOrgModeLoading && !isOrgEnabled) {
