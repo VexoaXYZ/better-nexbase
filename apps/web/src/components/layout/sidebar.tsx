@@ -249,7 +249,7 @@ export function Sidebar() {
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
-							onClick={() => signOut()}
+							onClick={() => signOut({ returnTo: window.location.origin })}
 						>
 							<svg
 								className="mr-2 h-4 w-4"

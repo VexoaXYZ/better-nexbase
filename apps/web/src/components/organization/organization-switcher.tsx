@@ -3,13 +3,10 @@ import type { Id } from "@backend/convex/_generated/dataModel";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -19,25 +16,69 @@ interface OrganizationSwitcherProps {
 	className?: string;
 }
 
+function OrgAvatar({
+	name,
+	logoUrl,
+	size = "sm",
+}: {
+	name: string;
+	logoUrl?: string | null;
+	size?: "sm" | "md";
+}) {
+	const dim = size === "sm" ? "h-7 w-7" : "h-8 w-8";
+	const text = size === "sm" ? "text-[10px]" : "text-xs";
+
+	if (logoUrl) {
+		return (
+			<img
+				src={logoUrl}
+				alt={name}
+				className={cn(dim, "shrink-0 rounded-lg object-cover")}
+			/>
+		);
+	}
+
+	return (
+		<div
+			className={cn(
+				dim,
+				text,
+				"flex shrink-0 select-none items-center justify-center rounded-lg bg-white/[0.07] font-semibold text-zinc-400",
+			)}
+		>
+			{name.slice(0, 2).toUpperCase()}
+		</div>
+	);
+}
+
 export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 	const navigate = useNavigate();
 	const organizations = useQuery(api.organizations.listForUser);
+	const pendingInvitations = useQuery(
+		api.members.listPendingInvitationsForUser,
+	);
 	const setDefaultOrg = useMutation(api.organizations.setDefaultOrganization);
 	const [isOpen, setIsOpen] = useState(false);
 
 	const currentOrg =
 		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
+	const hasPendingInvites = pendingInvitations && pendingInvitations.length > 0;
+
 	const handleSwitchOrg = async (orgId: Id<"organizations">) => {
 		await setDefaultOrg({ organizationId: orgId });
 		setIsOpen(false);
-		// Navigate to app to ensure clean state with new organization context
 		navigate({ to: "/app" });
 	};
 
 	const handleCreateOrg = () => {
 		setIsOpen(false);
 		navigate({ to: "/onboarding/organization" });
+	};
+
+	const handleInviteClick = (token: string) => {
+		setIsOpen(false);
+		navigate({ to: "/invite/$token", params: { token } });
 	};
 
 	if (!organizations || organizations.length === 0) {
@@ -47,33 +88,36 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 	return (
 		<DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
 			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
+				<button
+					type="button"
 					className={cn(
-						"flex h-auto w-full items-center justify-between gap-3 px-3 py-2 hover:bg-zinc-800",
+						"group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-150",
+						"hover:bg-white/[0.04] focus-visible:bg-white/[0.04]",
+						"outline-none focus-visible:ring-1 focus-visible:ring-white/10",
+						isOpen && "bg-white/[0.04]",
 						className,
 					)}
 				>
-					<div className="flex items-center gap-3">
-						<Avatar className="h-8 w-8">
-							{currentOrg?.logoUrl ? (
-								<AvatarImage src={currentOrg.logoUrl} alt={currentOrg.name} />
-							) : null}
-							<AvatarFallback className="bg-zinc-700 text-xs">
-								{currentOrg?.name?.slice(0, 2).toUpperCase() || "??"}
-							</AvatarFallback>
-						</Avatar>
-						<div className="flex flex-col items-start">
-							<span className="font-medium text-sm text-white">
-								{currentOrg?.name || "Select Organization"}
+					<div className="relative">
+						<OrgAvatar
+							name={currentOrg?.name ?? ""}
+							logoUrl={currentOrg?.logoUrl}
+						/>
+						{hasPendingInvites && (
+							<span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center">
+								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-40" />
+								<span className="relative inline-flex h-2 w-2 rounded-full bg-blue-400" />
 							</span>
-							{currentOrg?.slug && (
-								<span className="text-xs text-zinc-500">{currentOrg.slug}</span>
-							)}
-						</div>
+						)}
 					</div>
+					<span className="min-w-0 flex-1 truncate font-medium text-[13px] text-zinc-200">
+						{currentOrg?.name || "Select Organization"}
+					</span>
 					<svg
-						className="h-4 w-4 text-zinc-500"
+						className={cn(
+							"h-3.5 w-3.5 shrink-0 text-zinc-600 transition-transform duration-200",
+							isOpen && "rotate-180",
+						)}
 						fill="none"
 						stroke="currentColor"
 						strokeWidth="2"
@@ -83,82 +127,113 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
 						<path
 							strokeLinecap="round"
 							strokeLinejoin="round"
-							d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+							d="M19.5 8.25l-7.5 7.5-7.5-7.5"
 						/>
 					</svg>
-				</Button>
+				</button>
 			</DropdownMenuTrigger>
+
 			<DropdownMenuContent
-				className="w-[280px]"
+				className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[220px]"
 				align="start"
 				side="bottom"
-				sideOffset={4}
+				sideOffset={6}
 			>
-				<DropdownMenuLabel className="text-xs text-zinc-400">
-					Organizations
-				</DropdownMenuLabel>
-				{organizations.map(
-					(org) =>
-						org && (
-							<DropdownMenuItem
-								key={org._id}
-								className="flex items-center gap-3 px-2 py-2"
-								onClick={() => handleSwitchOrg(org._id)}
-							>
-								<Avatar className="h-8 w-8">
-									{org.logoUrl ? (
-										<AvatarImage src={org.logoUrl} alt={org.name} />
-									) : null}
-									<AvatarFallback className="bg-zinc-700 text-xs">
-										{org.name.slice(0, 2).toUpperCase()}
-									</AvatarFallback>
-								</Avatar>
-								<div className="flex flex-1 flex-col">
-									<span className="font-medium text-sm">{org.name}</span>
-									<span className="text-xs text-zinc-500">{org.slug}</span>
-								</div>
-								{org.isDefault && (
-									<svg
-										className="h-4 w-4 text-emerald-500"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="2"
-										viewBox="0 0 24 24"
-										aria-hidden="true"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M5 13l4 4L19 7"
-										/>
-									</svg>
-								)}
-							</DropdownMenuItem>
-						),
+				{/* Organization list */}
+				<div className="px-1 py-1">
+					{organizations.map(
+						(org) =>
+							org && (
+								<DropdownMenuItem
+									key={org._id}
+									className="flex items-center gap-2.5 rounded-md px-2 py-1.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+									onClick={() => handleSwitchOrg(org._id)}
+								>
+									<OrgAvatar name={org.name} logoUrl={org.logoUrl} size="md" />
+									<span className="min-w-0 flex-1 truncate font-medium text-[13px]">
+										{org.name}
+									</span>
+									{org.isDefault && (
+										<svg
+											className="h-3.5 w-3.5 shrink-0 text-zinc-500"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2.5"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M4.5 12.75l6 6 9-13.5"
+											/>
+										</svg>
+									)}
+								</DropdownMenuItem>
+							),
+					)}
+				</div>
+
+				{/* Pending invitations */}
+				{hasPendingInvites && (
+					<>
+						<DropdownMenuSeparator />
+						<div className="px-1 py-1">
+							<p className="px-2 pb-1 font-medium text-[11px] text-zinc-500 uppercase tracking-wide">
+								Invitations
+							</p>
+							{pendingInvitations.map((invitation) => (
+								<DropdownMenuItem
+									key={invitation.token}
+									className="flex items-center gap-2.5 rounded-md px-2 py-1.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+									onClick={() => handleInviteClick(invitation.token)}
+								>
+									<OrgAvatar
+										name={invitation.organizationName}
+										logoUrl={invitation.organizationLogoUrl}
+										size="md"
+									/>
+									<div className="flex min-w-0 flex-1 flex-col">
+										<span className="truncate font-medium text-[13px]">
+											{invitation.organizationName}
+										</span>
+										<span className="text-[11px] text-zinc-500 capitalize">
+											{invitation.role}
+										</span>
+									</div>
+									<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+								</DropdownMenuItem>
+							))}
+						</div>
+					</>
 				)}
+
+				{/* Create org */}
 				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					className="flex items-center gap-3 px-2 py-2"
-					onClick={handleCreateOrg}
-				>
-					<div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 border-dashed">
-						<svg
-							className="h-4 w-4 text-zinc-500"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								d="M12 4v16m8-8H4"
-							/>
-						</svg>
-					</div>
-					<span className="text-sm text-zinc-400">Create organization</span>
-				</DropdownMenuItem>
+				<div className="px-1 py-1">
+					<DropdownMenuItem
+						className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-zinc-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+						onClick={handleCreateOrg}
+					>
+						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-700/80 border-dashed">
+							<svg
+								className="h-3.5 w-3.5"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M12 4.5v15m7.5-7.5h-15"
+								/>
+							</svg>
+						</div>
+						<span className="font-medium text-[13px]">New organization</span>
+					</DropdownMenuItem>
+				</div>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

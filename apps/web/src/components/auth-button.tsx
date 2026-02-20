@@ -43,7 +43,7 @@ export function AuthButton({
 				<Button
 					size={size}
 					variant="ghost"
-					onClick={() => signOut()}
+					onClick={() => signOut({ returnTo: window.location.origin })}
 					className={className}
 				>
 					Sign out

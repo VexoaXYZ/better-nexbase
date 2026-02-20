@@ -55,11 +55,7 @@ export default defineSchema({
 		organizationId: v.id("organizations"),
 		userId: v.id("users"),
 		role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
-		status: v.union(
-			v.literal("pending"),
-			v.literal("active"),
-			v.literal("inactive"),
-		),
+		status: v.union(v.literal("pending"), v.literal("active")),
 		joinedAt: v.optional(v.number()),
 		createdAt: v.number(),
 		updatedAt: v.number(),
@@ -79,6 +75,7 @@ export default defineSchema({
 		status: v.union(
 			v.literal("pending"),
 			v.literal("accepted"),
+			v.literal("declined"),
 			v.literal("expired"),
 		),
 		createdAt: v.number(),

@@ -183,7 +183,7 @@ function OrganizationOnboardingPage() {
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => signOut()}
+							onClick={() => signOut({ returnTo: window.location.origin })}
 							className="text-zinc-400 hover:text-white"
 						>
 							Sign out

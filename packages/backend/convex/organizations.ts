@@ -90,7 +90,11 @@ function normalizeOrCreateWorkosOrgId(value?: string): string {
 
 function buildWorkspaceName(user: Doc<"users">): string {
 	const trimmedName = user.name?.trim();
-	if (trimmedName) return `${trimmedName}'s Workspace`;
+	if (trimmedName) {
+		// Use first name only to keep it short (e.g. "Tyrese's Workspace")
+		const firstName = trimmedName.split(/\s+/)[0];
+		return `${firstName}'s Workspace`;
+	}
 
 	const emailPrefix = user.email.split("@")[0]?.trim();
 	if (emailPrefix) {

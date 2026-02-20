@@ -28,6 +28,7 @@ export const list = query({
 				.withIndex("by_organization", (q) =>
 					q.eq("organizationId", args.organizationId),
 				)
+				.filter((q) => q.eq(q.field("status"), "active"))
 				.collect();
 
 			const members = await Promise.all(
@@ -266,11 +267,7 @@ export const remove = mutation({
 				}
 			}
 
-			await ctx.db.patch(args.memberId, {
-				status: "inactive",
-				updatedAt: Date.now(),
-			});
-
+			// Update the removed user's default org if it was this one
 			const memberUser = await ctx.db.get(targetMembership.userId);
 			if (
 				memberUser?.defaultOrganizationId === targetMembership.organizationId
@@ -278,14 +275,20 @@ export const remove = mutation({
 				const fallbackMemberships = await ctx.db
 					.query("organizationMembers")
 					.withIndex("by_user", (q) => q.eq("userId", targetMembership.userId))
+					.filter((q) =>
+						q.and(
+							q.eq(q.field("status"), "active"),
+							q.neq(q.field("_id"), args.memberId),
+						),
+					)
 					.collect();
 
-				const activeFallbackMemberships = fallbackMemberships
-					.filter((membership) => membership.status === "active")
-					.sort((a, b) => a.createdAt - b.createdAt);
+				const sorted = fallbackMemberships.sort(
+					(a, b) => a.createdAt - b.createdAt,
+				);
 
 				let replacementDefault: Id<"organizations"> | undefined;
-				for (const membership of activeFallbackMemberships) {
+				for (const membership of sorted) {
 					const organization = await ctx.db.get(membership.organizationId);
 					if (organization) {
 						replacementDefault = organization._id;
@@ -298,6 +301,9 @@ export const remove = mutation({
 					updatedAt: Date.now(),
 				});
 			}
+
+			// Hard delete the membership
+			await ctx.db.delete(args.memberId);
 
 			return args.memberId;
 		} catch (error) {
@@ -475,16 +481,7 @@ export const acceptInvite = mutation({
 				)
 				.unique();
 
-			if (existingMembership) {
-				if (existingMembership.status === "inactive") {
-					await ctx.db.patch(existingMembership._id, {
-						status: "active",
-						role: invitation.role,
-						joinedAt: now,
-						updatedAt: now,
-					});
-				}
-			} else {
+			if (!existingMembership) {
 				await ctx.db.insert("organizationMembers", {
 					organizationId: invitation.organizationId,
 					userId: user._id,
@@ -573,6 +570,144 @@ export const listInvitations = query({
 				(error.code === APP_ERROR_CODES.UNAUTHORIZED ||
 					error.code === APP_ERROR_CODES.ORG_FORBIDDEN ||
 					error.code === APP_ERROR_CODES.ORG_DISABLED)
+			) {
+				return [];
+			}
+			toPublicError(error);
+		}
+	},
+});
+
+/**
+ * Get invitation details by token (no auth required)
+ */
+export const getInviteByToken = query({
+	args: { token: v.string() },
+	handler: async (ctx, args) => {
+		const invitation = await ctx.db
+			.query("organizationInvitations")
+			.withIndex("by_token", (q) => q.eq("token", args.token))
+			.unique();
+
+		if (!invitation) {
+			return null;
+		}
+
+		const organization = await ctx.db.get(invitation.organizationId);
+		const inviter = await ctx.db.get(invitation.invitedBy);
+
+		return {
+			email: invitation.email,
+			role: invitation.role,
+			status: invitation.status,
+			expiresAt: invitation.expiresAt,
+			organizationName: organization?.name ?? "Unknown Organization",
+			organizationLogoUrl: organization?.logoUrl ?? null,
+			inviterName: inviter?.name ?? inviter?.email ?? "Unknown",
+		};
+	},
+});
+
+/**
+ * Decline an invitation by token
+ */
+export const declineInvite = mutation({
+	args: { token: v.string() },
+	handler: async (ctx, args) => {
+		try {
+			const config = await getAppConfig(ctx);
+			if (!isOrgEnabled(config)) {
+				throw new AppError(
+					APP_ERROR_CODES.ORG_DISABLED,
+					"Invitations are unavailable while org mode is disabled.",
+				);
+			}
+
+			const user = await requireCurrentUser(ctx);
+
+			const invitation = await ctx.db
+				.query("organizationInvitations")
+				.withIndex("by_token", (q) => q.eq("token", args.token))
+				.unique();
+
+			if (!invitation) {
+				throw new AppError(
+					APP_ERROR_CODES.VALIDATION_ERROR,
+					"Invitation not found",
+				);
+			}
+
+			if (invitation.status !== "pending") {
+				throw new AppError(
+					APP_ERROR_CODES.VALIDATION_ERROR,
+					"Invitation is no longer valid",
+				);
+			}
+
+			if (invitation.expiresAt < Date.now()) {
+				await ctx.db.patch(invitation._id, { status: "expired" });
+				throw new AppError(
+					APP_ERROR_CODES.VALIDATION_ERROR,
+					"Invitation has expired",
+				);
+			}
+
+			if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+				throw new AppError(
+					APP_ERROR_CODES.VALIDATION_ERROR,
+					"Invitation is for a different email address",
+				);
+			}
+
+			await ctx.db.patch(invitation._id, { status: "declined" });
+
+			return { success: true };
+		} catch (error) {
+			toPublicError(error);
+		}
+	},
+});
+
+/**
+ * List pending invitations for the current user
+ */
+export const listPendingInvitationsForUser = query({
+	args: {},
+	handler: async (ctx) => {
+		try {
+			const config = await getAppConfig(ctx);
+			if (!isOrgEnabled(config)) {
+				return [];
+			}
+
+			const user = await requireCurrentUser(ctx);
+			const now = Date.now();
+
+			const invitations = await ctx.db
+				.query("organizationInvitations")
+				.withIndex("by_email", (q) => q.eq("email", user.email))
+				.filter((q) => q.eq(q.field("status"), "pending"))
+				.collect();
+
+			const pendingInvitations = await Promise.all(
+				invitations
+					.filter((inv) => inv.expiresAt > now)
+					.map(async (inv) => {
+						const organization = await ctx.db.get(inv.organizationId);
+						return {
+							token: inv.token,
+							role: inv.role,
+							organizationName: organization?.name ?? "Unknown",
+							organizationLogoUrl: organization?.logoUrl ?? null,
+						};
+					}),
+			);
+
+			return pendingInvitations;
+		} catch (error) {
+			if (
+				error instanceof AppError &&
+				error.code === APP_ERROR_CODES.UNAUTHORIZED
 			) {
 				return [];
 			}
