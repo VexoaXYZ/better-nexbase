@@ -1,4 +1,7 @@
-import { registerRoutes as registerStripeRoutes } from "@convex-dev/stripe";
+import {
+	registerRoutes as registerStripeRoutes,
+	type StripeComponent,
+} from "@convex-dev/stripe";
 import { httpRouter } from "convex/server";
 import { components } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -9,7 +12,7 @@ const http = httpRouter();
 
 // Register WorkOS AuthKit webhook routes
 authKit.registerRoutes(http);
-registerStripeRoutes(http, (components as any).stripe, {
+registerStripeRoutes(http, components.stripe as unknown as StripeComponent, {
 	webhookPath: "/stripe/webhook",
 });
 

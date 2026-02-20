@@ -84,6 +84,7 @@
 
 @theme inline {
 	--font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+	--font-serif: "Instrument Serif", Georgia, serif;
 
 	/* Colors */
 	--color-background: var(--background);
@@ -141,6 +142,10 @@
 	--animate-sweep: sweep 2s ease-in-out infinite;
 	--animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
 	--animate-float: float 6s ease-in-out infinite;
+	--animate-hero-enter: hero-card-enter 0.8s ease-out both;
+	--animate-hero-float-left: hero-float-in-left 0.7s ease-out both;
+	--animate-hero-float-right: hero-float-in-right 0.7s ease-out both;
+	--animate-hero-slide-down: hero-slide-down 0.6s ease-out both;
 }
 
 /* ============================================
@@ -214,6 +219,50 @@
 	}
 }
 
+@keyframes hero-card-enter {
+	from {
+		opacity: 0;
+		transform: translateY(30px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes hero-float-in-left {
+	from {
+		opacity: 0;
+		transform: translateX(-30px) rotate(-2deg);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0) rotate(-2deg);
+	}
+}
+
+@keyframes hero-float-in-right {
+	from {
+		opacity: 0;
+		transform: translateX(30px) rotate(2deg);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0) rotate(2deg);
+	}
+}
+
+@keyframes hero-slide-down {
+	from {
+		opacity: 0;
+		transform: translateY(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 @keyframes fade-in {
 	from {
 		opacity: 0;
@@ -263,7 +312,7 @@
 	}
 
 	body {
-		@apply font-sans bg-background text-foreground min-h-screen;
+		@apply font-sans bg-background text-foreground min-h-screen overflow-x-hidden;
 	}
 
 	/* Selection styling */

@@ -2,7 +2,7 @@ import { api } from "@backend/convex/_generated/api";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,11 @@ function ProfileSettingsPage() {
 	const currentUser = useQuery(api.users.getCurrentUser);
 	const upsertUser = useMutation(api.users.upsertUser);
 
-	const [name, setName] = useState(currentUser?.name || "");
+	const [name, setName] = useState("");
+
+	useEffect(() => {
+		if (currentUser?.name) setName(currentUser.name);
+	}, [currentUser?.name]);
 	const [isSaving, setIsSaving] = useState(false);
 	const [message, setMessage] = useState<{
 		type: "success" | "error";

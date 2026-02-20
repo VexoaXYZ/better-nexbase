@@ -1,4 +1,4 @@
-import { StripeSubscriptions } from "@convex-dev/stripe";
+import { type StripeComponent, StripeSubscriptions } from "@convex-dev/stripe";
 import { v } from "convex/values";
 import { api, components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -6,7 +6,7 @@ import { type ActionCtx, action, query } from "./_generated/server";
 import { requireOrgCapability } from "./lib/authz";
 import { ORG_CAPABILITIES } from "./lib/capabilities";
 
-const stripeComponent: any = (components as any).stripe;
+const stripeComponent = components.stripe as unknown as StripeComponent;
 const stripeClient = new StripeSubscriptions(stripeComponent, {});
 
 function getAppBaseUrl(): string {
@@ -56,7 +56,7 @@ async function getOrCreateOrgCustomerId(
 		},
 	);
 	const paymentCustomerId = (payments || []).find(
-		(payment: any) => typeof payment?.stripeCustomerId === "string",
+		(payment) => typeof payment?.stripeCustomerId === "string",
 	)?.stripeCustomerId;
 	if (paymentCustomerId) {
 		return paymentCustomerId;

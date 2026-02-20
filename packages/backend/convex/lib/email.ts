@@ -1,4 +1,4 @@
-import { Resend } from "@convex-dev/resend";
+import { Resend, type ResendComponent } from "@convex-dev/resend";
 import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 
@@ -26,9 +26,12 @@ function getFromEmail(): string | null {
 	return from ? from : null;
 }
 
-export const resend = new Resend((components as any).resend, {
-	testMode: parseBooleanEnv(process.env.RESEND_TEST_MODE, true),
-});
+export const resend = new Resend(
+	components.resend as unknown as ResendComponent,
+	{
+		testMode: parseBooleanEnv(process.env.RESEND_TEST_MODE, true),
+	},
+);
 
 export interface SendOrganizationInviteEmailArgs {
 	toEmail: string;

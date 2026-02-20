@@ -70,7 +70,14 @@ export function RequireOrganization({ children }: RequireOrganizationProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [isOrgModeLoading, isOrgEnabled, organizations, ensureOrg, navigate]);
+	}, [
+		isOrgModeLoading,
+		isOrgEnabled,
+		organizations,
+		ensureOrg,
+		navigate,
+		hasOrganizationId,
+	]);
 
 	if (
 		isOrgModeLoading ||

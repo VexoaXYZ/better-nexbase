@@ -32,13 +32,12 @@ function OrganizationSettingsPage() {
 		organizations?.find((org) => org?.isDefault) ?? organizations?.[0];
 
 	const updateOrg = useMutation(api.organizations.update);
-	const slugAvailable = useQuery(
-		api.organizations.checkSlugAvailable,
-		currentOrg?.slug ? { slug: currentOrg.slug } : "skip",
-	);
-
 	const [name, setName] = useState("");
 	const [slug, setSlug] = useState("");
+	const slugAvailable = useQuery(
+		api.organizations.checkSlugAvailable,
+		slug && slug !== currentOrg?.slug && slug.length >= 3 ? { slug } : "skip",
+	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [message, setMessage] = useState<{
 		type: "success" | "error";

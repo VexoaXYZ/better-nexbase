@@ -33,13 +33,14 @@ function InviteAcceptPage() {
 		}
 
 		// User is signed in, try to accept the invitation
+		let timer: ReturnType<typeof setTimeout>;
+
 		const accept = async () => {
 			setStatus("accepting");
 			try {
 				await acceptInvite({ token });
 				setStatus("success");
-				// Redirect to app after a short delay
-				setTimeout(() => {
+				timer = setTimeout(() => {
 					navigate({ to: "/app" });
 				}, 2000);
 			} catch (err) {
@@ -51,6 +52,7 @@ function InviteAcceptPage() {
 		};
 
 		accept();
+		return () => clearTimeout(timer);
 	}, [isLoading, user, token, acceptInvite, navigate]);
 
 	const handleSignIn = () => {

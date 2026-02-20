@@ -119,6 +119,7 @@ function CallbackPage() {
 		organizations,
 		ensureOrg,
 		navigate,
+		hasOrganizationId,
 	]);
 
 	return (
